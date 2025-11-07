@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Cloudy Days Calculator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>☁️ Your Cloudy Days Calculator</h1>
+            <p class="subtitle">Discover what proportion of your life has been overcast</p>
+        </header>
+
+        <main>
+            <div class="card">
+                <h2>Tell us about your life</h2>
+                
+                <form id="cloudyForm">
+                    <div id="periodsContainer">
+                        <!-- Location periods will be added here -->
+                    </div>
+
+                    <button type="button" id="addPeriodBtn" class="btn-secondary" style="display: none;">
+                        + Add Another Location
+                    </button>
+
+                    <button type="submit" class="btn-primary">Calculate My Cloudy Days</button>
+                </form>
+
+                <div id="loading" class="loading" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>Analyzing weather data across your lifetime...</p>
+                </div>
+
+                <div id="results" class="results" style="display: none;">
+                    <!-- Results will be displayed here -->
+                </div>
+
+                <div id="error" class="error" style="display: none;">
+                    <!-- Error messages will be displayed here -->
+                </div>
+            </div>
+
+            <footer class="attribution">
+                <p>Weather data provided by <a href="https://open-meteo.com/" target="_blank">Open-Meteo.com</a></p>
+                <p class="note">Data available from 1970 onwards</p>
+            </footer>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+
