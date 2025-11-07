@@ -9,15 +9,7 @@ A web application that calculates the proportion of cloudy vs. sunny days you've
 - **Yearly Cloudiness Heatmap**: Visual timeline where each stripe represents a year, color-coded by average cloud cover
   - Gaps in your location history are shown as gray striped areas
   - Colors are normalized to your personal data range for better contrast
-- Detailed breakdown by sky conditions:
-  - ☀️ Cloud-Free Days (0-15% cloud cover)
-  - ⛅ Partly Cloudy (16-50% cloud cover)
-  - 🌥️ Mostly Cloudy (51-85% cloud cover)
-  - ☁️ Totally Cloudy (86-100% cloud cover)
-- Beautiful, responsive UI with interactive visualizations
-- Real-time historical weather data from Open-Meteo API
-- No backend required - runs entirely in the browser
-
+ 
 ## How to Use
 
 1. Open `index.html` in a web browser
@@ -60,18 +52,6 @@ The app fully supports multiple location periods:
 - `index.html` - Main HTML structure
 - `styles.css` - Modern, responsive styling
 - `app.js` - Application logic and API integration
-
-## Future Enhancements
-
-- [x] Multiple location support
-- [x] Gap visualization in timeline
-- [ ] Export results as image/PDF
-- [ ] Compare with other locations
-- [ ] Historical averages comparison
-- [ ] More detailed weather breakdowns (rain, snow, etc.)
-- [ ] Caching to reduce API calls
-- [ ] Backend for better performance and caching
-- [ ] Validation for overlapping date ranges
 
 ## Browser Compatibility
 
