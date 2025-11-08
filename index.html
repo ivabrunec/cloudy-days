@@ -1,16 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your Cloudy Days Calculator</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Cloudy Days — Calculate your lifetime cloud cover</title>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%23b8d4f1%22/><text x=%2250%22 y=%2250%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22 font-size=%2260%22>⛅</text></svg>">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+            <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@200;300;400&display=swap" rel="stylesheet">
+            <link rel="stylesheet" href="styles.css">
+            <script src="https://d3js.org/d3.v7.min.js"></script>
+    </head>
 <body>
     <div class="container">
         <header>
-            <h1>☁️ Your Cloudy Days Calculator</h1>
-            <p class="subtitle">Discover what proportion of your life has been overcast</p>
+            <h1><span class="animated-word" id="animatedWord">Cloudy</span> Days</h1>
+            <p class="subtitle">Calculate the proportion of cloudy days in your lifetime</p>
         </header>
 
         <main>
@@ -22,11 +27,12 @@
                         <!-- Location periods will be added here -->
                     </div>
 
-                    <button type="button" id="addPeriodBtn" class="btn-secondary" style="display: none;">
-                        + Add Another Location
-                    </button>
-
-                    <button type="submit" class="btn-primary">Calculate My Cloudy Days</button>
+                    <div class="button-group">
+                        <button type="submit" class="btn-primary">Calculate My Cloudy Days</button>
+                        <button type="button" id="addPeriodBtn" class="btn-secondary" style="display: none;">
+                            + Add Another Location
+                        </button>
+                    </div>
                 </form>
 
                 <div id="loading" class="loading" style="display: none;">
@@ -44,8 +50,8 @@
             </div>
 
             <footer class="attribution">
-                <p>Weather data provided by <a href="https://open-meteo.com/" target="_blank">Open-Meteo.com</a></p>
-                <p class="note">Data available from 1970 onwards</p>
+                <p>Weather data by <a href="https://open-meteo.com/" target="_blank">Open-Meteo</a></p>
+                <p class="note">Historical data from 1970—present</p>
             </footer>
         </main>
     </div>

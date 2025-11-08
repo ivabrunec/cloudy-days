@@ -16,7 +16,40 @@ const CLOUD_CATEGORIES = {
 document.addEventListener('DOMContentLoaded', () => {
     initializeForm();
     attachEventListeners();
+    startTitleAnimation();
 });
+
+// Title animation
+function startTitleAnimation() {
+    const words = ['Cloudy', 'Perfect', 'Sunny', 'Rainy', 'Better', 'Gloomy', 'Bright', 'Dreary', 'Golden', 'Gray', 'Happy', 'Stormy'];
+    let currentIndex = 0;
+    const wordElement = document.getElementById('animatedWord');
+    
+    if (!wordElement) return;
+    
+    function cycleWord() {
+        // Fade out
+        wordElement.classList.add('faded');
+        
+        setTimeout(() => {
+            // Change word
+            currentIndex = (currentIndex + 1) % words.length;
+            wordElement.textContent = words[currentIndex];
+            
+            // Fade in (remove faded class only if it's "Cloudy")
+            if (words[currentIndex] === 'Cloudy') {
+                wordElement.classList.remove('faded');
+            }
+        }, 300); // Fade transition time
+        
+        // Schedule next cycle - longer delay for "Cloudy"
+        const nextDelay = words[currentIndex] === 'Cloudy' ? 2000 : 1000;
+        setTimeout(cycleWord, nextDelay);
+    }
+    
+    // Start the animation
+    setTimeout(cycleWord, 2000); // Initial delay before first change
+}
 
 function initializeForm() {
     // Add the first period by default
@@ -543,6 +576,7 @@ function analyzeWeatherData(weatherData, locationName = '') {
     
     // Yearly breakdown for heatmap
     const yearlyData = {};
+    const dailyData = [];
     
     for (let i = 0; i < cloudCover.length; i++) {
         const coverage = cloudCover[i];
@@ -555,6 +589,12 @@ function analyzeWeatherData(weatherData, locationName = '') {
         
         totalDays++;
         totalCloudCoverage += coverage;
+        
+        // Store daily data for finer analysis
+        dailyData.push({
+            date: date,
+            cloudCover: coverage
+        });
         
         // Categorize the day
         if (coverage <= CLOUD_CATEGORIES.CLEAR) {
@@ -598,6 +638,7 @@ function analyzeWeatherData(weatherData, locationName = '') {
         mostlyCloudyDays,
         totallyCloudyDays,
         yearlyAverages,
+        data: dailyData,
         // Calculate percentages
         cloudFreePercentage: totalDays > 0 ? (cloudFreeDays / totalDays) * 100 : 0,
         partlyCloudyPercentage: totalDays > 0 ? (partlyCloudyDays / totalDays) * 100 : 0,
@@ -654,6 +695,12 @@ function aggregateResults(results) {
     
     const averageCloudCover = totalDays > 0 ? totalCloudCoverage / totalDays : 0;
     
+    // Collect all daily data for finer breakdowns
+    const allDailyData = [];
+    for (const result of results) {
+        allDailyData.push(...result.analysis.data);
+    }
+    
     return {
         totalDays,
         averageCloudCover,
@@ -666,12 +713,33 @@ function aggregateResults(results) {
         partlyCloudyPercentage: totalDays > 0 ? (partlyCloudyDays / totalDays) * 100 : 0,
         mostlyCloudyPercentage: totalDays > 0 ? (mostlyCloudyDays / totalDays) * 100 : 0,
         totallyCloudyPercentage: totalDays > 0 ? (totallyCloudyDays / totalDays) * 100 : 0,
-        periods: results
+        periods: results,
+        data: allDailyData
     };
+}
+
+function generateReportTitle(avgCloudCover) {
+    const avg = parseFloat(avgCloudCover);
+    if (avg < 30) return 'Clear Skies';
+    if (avg < 45) return 'Mostly Sunny';
+    if (avg < 55) return 'A Balanced Mix';
+    if (avg < 70) return 'Mostly Cloudy';
+    return 'Mostly Overcast';
 }
 
 function displayResults(aggregated, periods) {
     const resultsDiv = document.getElementById('results');
+    
+    // Check data reliability - skip if insufficient data
+    if (aggregated.totalDays < 30) {
+        resultsDiv.innerHTML = `
+            <div style="text-align: center; padding: 3rem 0; color: var(--text-secondary);">
+                <p>Insufficient data to generate reliable results. Please ensure your date range includes at least 30 days of data.</p>
+            </div>
+        `;
+        resultsDiv.style.display = 'block';
+        return;
+    }
     
     const avgCloudCover = aggregated.averageCloudCover.toFixed(1);
     
@@ -683,133 +751,231 @@ function displayResults(aggregated, periods) {
         periodSummary = `across ${periods.length} locations`;
     }
     
-    // Fun facts
-    const funFact = generateFunFact(aggregated);
+    // Generate title based on cloud cover
+    const reportTitle = generateReportTitle(avgCloudCover);
     
-    // Calculate percentages for display
-    const cloudFreePercent = aggregated.cloudFreePercentage.toFixed(1);
-    const partlyCloudyPercent = aggregated.partlyCloudyPercentage.toFixed(1);
-    const mostlyCloudyPercent = aggregated.mostlyCloudyPercentage.toFixed(1);
-    const totallyCloudyPercent = aggregated.totallyCloudyPercentage.toFixed(1);
+    // Calculate percentages for new finer breakdown
+    const clearSkiesPercent = ((aggregated.data.filter(d => d.cloudCover < 30).length / aggregated.totalDays) * 100).toFixed(1);
+    const partlyCloudyPercent = ((aggregated.data.filter(d => d.cloudCover >= 30 && d.cloudCover < 50).length / aggregated.totalDays) * 100).toFixed(1);
+    const mostlyCloudyPercent = ((aggregated.data.filter(d => d.cloudCover >= 50 && d.cloudCover < 70).length / aggregated.totalDays) * 100).toFixed(1);
+    const overcastPercent = ((aggregated.data.filter(d => d.cloudCover >= 70).length / aggregated.totalDays) * 100).toFixed(1);
+    
+    const clearSkiesDays = aggregated.data.filter(d => d.cloudCover < 30).length;
+    const partlyCloudyDays = aggregated.data.filter(d => d.cloudCover >= 30 && d.cloudCover < 50).length;
+    const mostlyCloudyDays = aggregated.data.filter(d => d.cloudCover >= 50 && d.cloudCover < 70).length;
+    const overcastDays = aggregated.data.filter(d => d.cloudCover >= 70).length;
     
     resultsDiv.innerHTML = `
-        <h3>Your Cloudy Days Report</h3>
+        <h3>${reportTitle}</h3>
         
-        ${funFact ? `
-        <div class="fun-fact" style="margin-bottom: 2rem;">
-            <h4>💡 Insights</h4>
-            <p>${funFact}</p>
-        </div>
-        ` : ''}
-        
-        <div class="stats-grid">
-            <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                <div class="stat-value">${aggregated.totalDays.toLocaleString()}</div>
-                <div class="stat-label">Total Days</div>
-                <div class="stat-sublabel">${periodSummary}</div>
+        <div class="cloud-cover-hero">
+            <div class="hero-value-container">
+                <svg id="cloudVisualization" width="280" height="280"></svg>
+                <div class="hero-value">${avgCloudCover}%</div>
             </div>
-            
-            <div class="stat-card" style="background: linear-gradient(135deg, #a8b8c0 0%, #6c757d 100%);">
-                <div class="stat-value">${avgCloudCover}%</div>
-                <div class="stat-label">Average Cloud Cover</div>
-                <div class="stat-sublabel">across your lifetime</div>
-            </div>
+            <div class="hero-label">Average Cloud Cover</div>
+            <div class="hero-sublabel">${aggregated.totalDays.toLocaleString()} days analyzed ${periodSummary}</div>
         </div>
 
-        <h4 style="margin-top: 2rem; margin-bottom: 1rem; color: #2c3e50;">Daily Sky Conditions Breakdown</h4>
+        <h4 style="margin-top: 2.5rem; margin-bottom: 1.5rem;">Sky Conditions Breakdown</h4>
         
-        <div class="category-breakdown">
-            <div class="category-item clear">
-                <div class="category-icon">☀️</div>
-                <div class="category-content">
-                    <div class="category-title">Cloud-Free Days</div>
-                    <div class="category-subtitle">0-15% cloud cover</div>
-                </div>
-                <div class="category-stats">
-                    <div class="category-percent">${cloudFreePercent}%</div>
-                    <div class="category-count">${aggregated.cloudFreeDays.toLocaleString()} days</div>
-                </div>
+        <div class="bar-categories">
+            <div class="bar-category" style="flex: ${clearSkiesPercent}">
+                <div class="bar-cat-icon">☀️</div>
+                <div class="bar-cat-label">Clear Skies</div>
+                <div class="bar-cat-range">&lt;30%</div>
             </div>
-            
-            <div class="category-item partly">
-                <div class="category-icon">⛅</div>
-                <div class="category-content">
-                    <div class="category-title">Partly Cloudy</div>
-                    <div class="category-subtitle">16-50% cloud cover</div>
-                </div>
-                <div class="category-stats">
-                    <div class="category-percent">${partlyCloudyPercent}%</div>
-                    <div class="category-count">${aggregated.partlyCloudyDays.toLocaleString()} days</div>
-                </div>
+            <div class="bar-category" style="flex: ${partlyCloudyPercent}">
+                <div class="bar-cat-icon">⛅</div>
+                <div class="bar-cat-label">Partly Cloudy</div>
+                <div class="bar-cat-range">30-50%</div>
             </div>
-            
-            <div class="category-item mostly">
-                <div class="category-icon">🌥️</div>
-                <div class="category-content">
-                    <div class="category-title">Mostly Cloudy</div>
-                    <div class="category-subtitle">51-85% cloud cover</div>
-                </div>
-                <div class="category-stats">
-                    <div class="category-percent">${mostlyCloudyPercent}%</div>
-                    <div class="category-count">${aggregated.mostlyCloudyDays.toLocaleString()} days</div>
-                </div>
+            <div class="bar-category" style="flex: ${mostlyCloudyPercent}">
+                <div class="bar-cat-icon">🌥️</div>
+                <div class="bar-cat-label">Mostly Cloudy</div>
+                <div class="bar-cat-range">50-70%</div>
             </div>
-            
-            <div class="category-item overcast">
-                <div class="category-icon">☁️</div>
-                <div class="category-content">
-                    <div class="category-title">Totally Cloudy</div>
-                    <div class="category-subtitle">86-100% cloud cover</div>
-                </div>
-                <div class="category-stats">
-                    <div class="category-percent">${totallyCloudyPercent}%</div>
-                    <div class="category-count">${aggregated.totallyCloudyDays.toLocaleString()} days</div>
-                </div>
+            <div class="bar-category" style="flex: ${overcastPercent}">
+                <div class="bar-cat-icon">☁️</div>
+                <div class="bar-cat-label">Overcast</div>
+                <div class="bar-cat-range">&gt;70%</div>
             </div>
         </div>
-
+        
         <div class="visual-bar">
-            <div class="bar-segment" style="background: linear-gradient(135deg, #f6d365 0%, #fda085 100%); width: ${cloudFreePercent}%">
-                ${cloudFreePercent > 8 ? `${cloudFreePercent}%` : ''}
+            <div class="bar-segment bar-clear" style="width: ${clearSkiesPercent}%">
+                <span class="bar-percent">${clearSkiesPercent}%</span>
             </div>
-            <div class="bar-segment" style="background: linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%); width: ${partlyCloudyPercent}%">
-                ${partlyCloudyPercent > 8 ? `${partlyCloudyPercent}%` : ''}
+            <div class="bar-segment bar-partly" style="width: ${partlyCloudyPercent}%">
+                <span class="bar-percent">${partlyCloudyPercent}%</span>
             </div>
-            <div class="bar-segment" style="background: linear-gradient(135deg, #a8b8c0 0%, #8a9ba8 100%); width: ${mostlyCloudyPercent}%">
-                ${mostlyCloudyPercent > 8 ? `${mostlyCloudyPercent}%` : ''}
+            <div class="bar-segment bar-mostly" style="width: ${mostlyCloudyPercent}%">
+                <span class="bar-percent">${mostlyCloudyPercent}%</span>
             </div>
-            <div class="bar-segment" style="background: linear-gradient(135deg, #667788 0%, #556677 100%); width: ${totallyCloudyPercent}%">
-                ${totallyCloudyPercent > 8 ? `${totallyCloudyPercent}%` : ''}
+            <div class="bar-segment bar-overcast" style="width: ${overcastPercent}%">
+                <span class="bar-percent">${overcastPercent}%</span>
+            </div>
+        </div>
+        
+        <div class="bar-legend">
+            <div class="legend-item">
+                <span class="legend-value">${clearSkiesDays.toLocaleString()}</span> days
+            </div>
+            <div class="legend-item">
+                <span class="legend-value">${partlyCloudyDays.toLocaleString()}</span> days
+            </div>
+            <div class="legend-item">
+                <span class="legend-value">${mostlyCloudyDays.toLocaleString()}</span> days
+            </div>
+            <div class="legend-item">
+                <span class="legend-value">${overcastDays.toLocaleString()}</span> days
             </div>
         </div>
 
-        <h4 style="margin-top: 2rem; margin-bottom: 1rem; color: #2c3e50;">Yearly Cloudiness Timeline</h4>
+        <h4 style="margin-top: 2.5rem; margin-bottom: 1.5rem;">Your Lifetime Cloud Timeline</h4>
         
-        ${generateYearlyHeatmapHTML(aggregated.yearlyAverages)}
+        ${generateYearlyHeatmapHTML(aggregated.yearlyAverages, aggregated.periods)}
     `;
     
     resultsDiv.style.display = 'block';
+    
+    // Animate the cloud circle
+    animateCloudCircle(parseFloat(avgCloudCover));
 }
 
-function generateYearlyHeatmapHTML(yearlyAverages) {
+function animateCloudCircle(cloudPercentage) {
+    const svg = d3.select('#cloudVisualization');
+    svg.selectAll('*').remove(); // Clear any existing content
+    
+    const width = 280;
+    const height = 280;
+    const radius = 130;
+    const centerX = width / 2;
+    const centerY = height / 2;
+    
+    // Create defs for clipping
+    const defs = svg.append('defs');
+    
+    // Create clipping path for the circle
+    defs.append('clipPath')
+        .attr('id', 'circleClip')
+        .append('circle')
+        .attr('cx', centerX)
+        .attr('cy', centerY)
+        .attr('r', radius);
+    
+    // Background circle - solid light blue, no border
+    svg.append('circle')
+        .attr('cx', centerX)
+        .attr('cy', centerY)
+        .attr('r', radius)
+        .attr('fill', '#b8d4f1')
+        .attr('stroke', 'none');
+    
+    // Calculate number of clouds to cover the percentage of the circle area
+    // Circle area = π * r²
+    const circleArea = Math.PI * radius * radius;
+    const cloudArea = 400; // Approximate area per cloud
+    const totalCloudsNeeded = Math.ceil((circleArea * cloudPercentage / 100) / cloudArea);
+    
+    // Add cloud shapes
+    for (let i = 0; i < totalCloudsNeeded; i++) {
+        const cloudGroup = svg.append('g')
+            .attr('opacity', 0)
+            .attr('clip-path', 'url(#circleClip)');
+        
+        // Distribute clouds randomly across the entire square canvas
+        // Let the circle clip them naturally at the edges
+        const cloudX = Math.random() * width;
+        const cloudY = Math.random() * height;
+        
+        // Random cloud size
+        const cloudSize = 12 + Math.random() * 10;
+        
+        // Create a cloud shape using ellipses
+        // Main body
+        cloudGroup.append('ellipse')
+            .attr('cx', cloudX)
+            .attr('cy', cloudY)
+            .attr('rx', cloudSize)
+            .attr('ry', cloudSize * 0.6)
+            .attr('fill', 'white')
+            .attr('opacity', 0.75);
+        
+        // Left puff
+        cloudGroup.append('ellipse')
+            .attr('cx', cloudX - cloudSize * 0.6)
+            .attr('cy', cloudY)
+            .attr('rx', cloudSize * 0.65)
+            .attr('ry', cloudSize * 0.5)
+            .attr('fill', 'white')
+            .attr('opacity', 0.75);
+        
+        // Right puff
+        cloudGroup.append('ellipse')
+            .attr('cx', cloudX + cloudSize * 0.6)
+            .attr('cy', cloudY)
+            .attr('rx', cloudSize * 0.65)
+            .attr('ry', cloudSize * 0.5)
+            .attr('fill', 'white')
+            .attr('opacity', 0.75);
+        
+        // Top puff
+        cloudGroup.append('ellipse')
+            .attr('cx', cloudX)
+            .attr('cy', cloudY - cloudSize * 0.3)
+            .attr('rx', cloudSize * 0.5)
+            .attr('ry', cloudSize * 0.45)
+            .attr('fill', 'white')
+            .attr('opacity', 0.75);
+        
+        // Animate clouds fading in with staggered delays
+        cloudGroup.transition()
+            .delay(200 + i * 100)
+            .duration(800)
+            .attr('opacity', 1);
+        
+        // Add subtle floating animation
+        function floatCloud() {
+            cloudGroup.transition()
+                .duration(3000 + Math.random() * 2000)
+                .ease(d3.easeSinInOut)
+                .attr('transform', `translate(${Math.random() * 4 - 2}, ${Math.random() * 4 - 2})`)
+                .on('end', floatCloud);
+        }
+        
+        // Start floating after initial fade in
+        setTimeout(() => floatCloud(), 200 + i * 100 + 800);
+    }
+}
+
+function generateYearlyHeatmapHTML(yearlyAverages, periods) {
     if (!yearlyAverages || yearlyAverages.length === 0) {
         return '<div style="text-align: center; color: #999;">No data available</div>';
     }
     
-    // Find the full range of years (including gaps)
-    const years = yearlyAverages.map(y => y.year);
+    // Filter out years with fewer than 5 days of data
+    const MIN_DAYS_PER_YEAR = 5;
+    const validYearlyAverages = yearlyAverages.filter(y => y.days >= MIN_DAYS_PER_YEAR);
+    
+    if (validYearlyAverages.length === 0) {
+        return '<div style="text-align: center; color: #999;">Insufficient data per year (need at least 5 days per year)</div>';
+    }
+    
+    // Find the full range of years - only use valid years with sufficient data
+    const years = validYearlyAverages.map(y => y.year);
     const minYear = Math.min(...years);
     const maxYear = Math.max(...years);
     const totalYears = maxYear - minYear + 1;
     
-    // Create a map for quick lookup
+    // Create a map for quick lookup (only valid years with 10+ days)
     const yearDataMap = {};
-    yearlyAverages.forEach(y => {
+    validYearlyAverages.forEach(y => {
         yearDataMap[y.year] = y;
     });
     
-    // Find min and max cloud cover for color scaling (excluding gaps)
-    const cloudCoverValues = yearlyAverages.map(y => y.averageCloudCover);
+    // Find min and max cloud cover for color scaling (excluding gaps and insufficient data)
+    const cloudCoverValues = validYearlyAverages.map(y => y.averageCloudCover);
     const minCloudCover = Math.min(...cloudCoverValues);
     const maxCloudCover = Math.max(...cloudCoverValues);
     
@@ -833,11 +999,11 @@ function generateYearlyHeatmapHTML(yearlyAverages) {
                          title="${year}${locationText}: ${yearData.averageCloudCover.toFixed(1)}% cloud cover">
                     </div>`);
         } else {
-            // Gap year - show as empty/striped pattern
+            // Gap year or insufficient data - show as empty/striped pattern
             stripes.push(`<div class="heatmap-stripe heatmap-gap" 
                          style="width: ${width}%;" 
                          data-year="${year}"
-                         title="${year}: No data (gap in locations)">
+                         title="${year}: Insufficient data (&lt;5 days)">
                     </div>`);
         }
     }
@@ -846,16 +1012,12 @@ function generateYearlyHeatmapHTML(yearlyAverages) {
     const minColor = getCloudColorForPercentage(minCloudCover, minCloudCover, maxCloudCover);
     const maxColor = getCloudColorForPercentage(maxCloudCover, minCloudCover, maxCloudCover);
     
-    const hasGaps = totalYears > yearlyAverages.length;
+    const hasGaps = totalYears > validYearlyAverages.length;
     
     return `
         <div class="heatmap-container">
             <div class="heatmap-stripes">
                 ${stripes.join('')}
-            </div>
-            <div class="heatmap-labels">
-                <span>${minYear}</span>
-                <span>${maxYear}</span>
             </div>
             <div class="heatmap-scale">
                 <div class="scale-bar" style="background: linear-gradient(to right, ${minColor}, ${maxColor});"></div>
@@ -863,7 +1025,7 @@ function generateYearlyHeatmapHTML(yearlyAverages) {
                     <span>${minCloudCover.toFixed(1)}% (clearest year)</span>
                     <span>${maxCloudCover.toFixed(1)}% (cloudiest year)</span>
                 </div>
-                ${hasGaps ? '<div class="gap-note">⚠️ Gray stripes indicate years with no location data</div>' : ''}
+                ${hasGaps ? '<div class="gap-note">⚠️ Gray stripes indicate years with insufficient data (&lt;5 days)</div>' : ''}
             </div>
         </div>
     `;
